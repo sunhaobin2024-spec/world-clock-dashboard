@@ -123,8 +123,8 @@
 
 <script>
 /* ---------- 登录 ---------- */
-/* 与完整版 .access_keys 一致：575006=通用口令(不锁IP,优先) / 189098=主密钥(锁IP) / LpQd1h=备用 */
-var PWS = ["575006","189098","LpQd1h"];
+/* 与完整版 .access_keys 一致：575006=通用口令(不锁IP,优先) / 189098=主密钥(锁IP) */
+var PWS = ["575006","189098"];
 function tryLogin(){
   var v = document.getElementById("pw").value.trim();
   if(PWS.indexOf(v) >= 0){
