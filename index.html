@@ -123,10 +123,11 @@
 
 <script>
 /* ---------- 登录 ---------- */
-var PW = "189098";   /* 与完整版一致的访问口令（应急页仅本地校验） */
+/* 与完整版 .access_keys 一致：575006=通用口令(不锁IP,优先) / 189098=主密钥(锁IP) / LpQd1h=备用 */
+var PWS = ["575006","189098","LpQd1h"];
 function tryLogin(){
   var v = document.getElementById("pw").value.trim();
-  if(v === PW){
+  if(PWS.indexOf(v) >= 0){
     try{ sessionStorage.setItem("eg.ok","1"); }catch(e){}
     document.getElementById("gate").style.display="none";
     document.getElementById("desk").style.display="block";
