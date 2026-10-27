@@ -48,12 +48,19 @@ if ! ps -eo args --no-headers | grep -q "[a]dmin_chat_monitor\.py"; then
     setsid nohup python3.11 "$HERE/admin_chat_monitor.py" >/tmp/admin_chat_mon.log 2>&1 </dev/null &
 fi
 
-# 守护只管 Named Tunnel（已关闭），Quick Tunnel 断了它不自动重连
+# 守护只管 Named Tunnel（http2），Quick Tunnel 断了它不自动重连
 # ——这是故意的：重连会换域名，偷偷换掉你手机里的链接。
 # 但"全挂了没人拉"和"还在服务只是连接断了"是两回事：
 # 前者必须自动恢复，后者要等你决定。所以只补进程，不动已活着的隧道。
-sleep 5
-if ! ps -eo args --no-headers | grep -q "[c]loudflared tunnel"; then
+# 注意竞态：守护拉命名隧道是异步的，这里先等它起来（最多 15s），
+# 只认命名隧道（--protocol http2），避免它刚起来就被兜底 quick 重复拉一份。
+for _ in $(seq 1 15); do
+    if ps -eo args --no-headers | grep -q "[c]loudflared tunnel --no-autoupdate --protocol http2"; then
+        break
+    fi
+    sleep 1
+done
+if ! ps -eo args --no-headers | grep -q "[c]loudflared tunnel --no-autoupdate --protocol http2"; then
     setsid nohup "$CF" tunnel --no-autoupdate --url http://127.0.0.1:8080 \
         >/tmp/cf-quick.log 2>&1 </dev/null &
 fi
