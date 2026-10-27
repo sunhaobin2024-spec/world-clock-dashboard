@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>cloudsystem · 应急版</title>
+<style>
+  :root{--bg:#0e1420;--panel:#171f2e;--panel2:#1e2839;--text:#e7ecf3;--mut:#8a97ab;--acc:#22c1dc;--ok:#22b573;--bad:#e05b5b}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:system-ui,"Microsoft YaHei",sans-serif;min-height:100vh}
+  /* 登录 */
+  #gate{display:flex;align-items:center;justify-content:center;min-height:100vh;flex-direction:column;gap:14px}
+  #gate h1{font-size:30px;letter-spacing:1px}
+  #gate .sub{color:var(--mut);font-size:13px}
+  #gate input{padding:11px 14px;border-radius:10px;border:1px solid #2c3a52;background:var(--panel);color:var(--text);font-size:15px;width:230px;text-align:center;outline:none}
+  #gate button{padding:11px 26px;border-radius:10px;border:0;background:linear-gradient(180deg,var(--acc),#0e7490);color:#fff;font-size:14px;cursor:pointer}
+  #gate .err{color:var(--bad);font-size:12.5px;min-height:16px}
+  /* 桌面 */
+  #desk{display:none;max-width:900px;margin:0 auto;padding:20px 14px 60px}
+  header{display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap}
+  header b{font-size:17px}
+  header .tag{font-size:11px;color:#ffd479;border:1px solid rgba(255,212,121,.4);border-radius:6px;padding:2px 8px}
+  header .lnk{margin-left:auto;font-size:12.5px}
+  header .lnk a{color:var(--acc);text-decoration:none;margin-left:12px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+  .tile{background:var(--panel);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:18px 10px;text-align:center;cursor:pointer;transition:.15s;user-select:none}
+  .tile:hover{background:var(--panel2);transform:translateY(-2px)}
+  .tile .ic{font-size:30px}
+  .tile .nm{font-size:13px;margin-top:8px}
+  /* 窗口 */
+  .win{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;z-index:20}
+  .win.on{display:flex;align-items:center;justify-content:center}
+  .win .box{background:var(--panel);border:1px solid rgba(255,255,255,.1);border-radius:16px;width:min(680px,94vw);max-height:86vh;display:flex;flex-direction:column;overflow:hidden}
+  .win .hd{display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.08);font-weight:600;font-size:14px}
+  .win .hd button{margin-left:auto;border:0;background:rgba(255,255,255,.1);color:#fff;border-radius:8px;padding:4px 12px;cursor:pointer;font-size:12px}
+  .win .bd{padding:16px;overflow-y:auto;font-size:13.5px;line-height:1.7}
+  .mut{color:var(--mut);font-size:12px}
+  textarea,input[t="t"]{width:100%;background:var(--panel2);border:1px solid rgba(255,255,255,.12);color:var(--text);border-radius:10px;padding:10px;font-family:inherit;font-size:13.5px;outline:none}
+  .btn{border:0;border-radius:9px;background:linear-gradient(180deg,var(--acc),#0e7490);color:#fff;padding:8px 18px;cursor:pointer;font-size:13px;margin-top:10px}
+  .notice{background:rgba(255,212,121,.08);border:1px solid rgba(255,212,121,.3);border-radius:10px;padding:10px 12px;font-size:12.5px;margin-bottom:14px}
+  /* 2048 */
+  #g2048{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;width:min(340px,86vw);margin:0 auto}
+  #g2048 .c{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:8px;background:#2a3648;font-weight:700;font-size:22px}
+  .g-hd{display:flex;align-items:center;gap:12px;justify-content:center;margin-bottom:12px}
+  /* 贪吃蛇 */
+  #snk{display:block;margin:0 auto;background:#0b101a;border-radius:10px;touch-action:none}
+  /* 留言 */
+  .msg{background:var(--panel2);border-radius:10px;padding:8px 12px;margin:8px 0;font-size:13px}
+</style>
+</head>
+<body>
+
+<!-- 登录门 -->
+<div id="gate">
+  <h1>cloudsystem</h1>
+  <div class="sub">应急版 · 主站不可用时的备用入口（本页所有功能本地运行，无需服务器）</div>
+  <input id="pw" type="password" placeholder="输入访问口令" maxlength="20">
+  <button onclick="tryLogin()">进 入</button>
+  <div class="err" id="gateErr"></div>
+</div>
+
+<!-- 桌面 -->
+<div id="desk">
+  <div class="notice">⚠️ 这是 <b>应急备用页</b>（GitHub 托管，纯本地运行）。完整版当前版本 <b>v15.83</b>（新增应急备用页（emergency/index.html，GitHub Page）。主站恢复后请回 <a href="https://3920850391.dpdns.org/" style="color:var(--acc)">3920850391.dpdns.org</a>。</div>
+  <header>
+    <b>cloudsystem 应急版</b><span class="tag">离线可用</span>
+    <span class="lnk"><a href="https://3920850391.dpdns.org/" target="_blank">完整版主站 ↗</a></span>
+  </header>
+  <div class="grid">
+    <div class="tile" onclick="openApp('note')"><div class="ic">📝</div><div class="nm">记事本</div></div>
+    <div class="tile" onclick="openApp('board')"><div class="ic">💬</div><div class="nm">离线留言板</div></div>
+    <div class="tile" onclick="openApp('g2048')"><div class="ic">🎮</div><div class="nm">2048</div></div>
+    <div class="tile" onclick="openApp('snake')"><div class="ic">🐍</div><div class="nm">贪吃蛇</div></div>
+    <div class="tile" onclick="openApp('info')"><div class="ic">ℹ️</div><div class="nm">使用说明</div></div>
+  </div>
+</div>
+
+<!-- 记事本 -->
+<div class="win" id="w-note"><div class="box"><div class="hd">📝 记事本<button onclick="closeApp('note')">关闭</button></div>
+  <div class="bd">
+    <textarea id="noteTa" rows="12" placeholder="随手记（自动保存在本机浏览器）"></textarea>
+    <button class="btn" onclick="saveNote()">保存</button> <span class="mut" id="noteSt"></span>
+  </div></div></div>
+
+<!-- 留言板 -->
+<div class="win" id="w-board"><div class="box"><div class="hd">💬 离线留言板<button onclick="closeApp('board')">关闭</button></div>
+  <div class="bd">
+    <div class="mut" style="margin-bottom:8px">主站故障期间留下的消息，保存在本机；恢复后可一键复制到完整版提交。</div>
+    <textarea id="boardTa" rows="3" placeholder="写留言…"></textarea>
+    <button class="btn" onclick="addMsg()">添加留言</button>
+    <div id="msgList" style="margin-top:12px"></div>
+  </div></div></div>
+
+<!-- 2048 -->
+<div class="win" id="w-g2048"><div class="box"><div class="hd">🎮 2048<button onclick="closeApp('g2048')">关闭</button></div>
+  <div class="bd">
+    <div class="g-hd"><b>得分：<span id="s2048">0</span></b><button class="btn" style="margin:0" onclick="new2048()">新一局</button></div>
+    <div id="g2048"></div>
+    <div class="mut" style="text-align:center;margin-top:10px">方向键 / 上下左右滑动</div>
+  </div></div></div>
+
+<!-- 贪吃蛇 -->
+<div class="win" id="w-snake"><div class="box"><div class="hd">🐍 贪吃蛇<button onclick="closeApp('snake')">关闭</button></div>
+  <div class="bd">
+    <div class="g-hd"><b>得分：<span id="sSnk">0</span></b><button class="btn" style="margin:0" onclick="newSnk()">重新开始</button></div>
+    <canvas id="snk" width="320" height="320"></canvas>
+    <div class="mut" style="text-align:center;margin-top:10px">方向键 / 屏幕滑动</div>
+  </div></div></div>
+
+<!-- 说明 -->
+<div class="win" id="w-info"><div class="box"><div class="hd">ℹ️ 使用说明<button onclick="closeApp('info')">关闭</button></div>
+  <div class="bd">
+    <b>这是什么？</b><br>
+    cloudsystem 完整版（<a href="https://3920850391.dpdns.org/" style="color:var(--acc)">3920850391.dpdns.org</a>）需要我的服务器在线才能运行。当服务器/隧道故障时，这个 GitHub 托管的应急页始终可用——它不依赖任何后端。<br><br>
+    <b>应急页能做什么</b><br>
+    · 📝 记事本：本地保存，随时记录<br>
+    · 💬 离线留言板：故障期间的留言存本机，恢复后可复制到完整版提交<br>
+    · 🎮 2048 / 🐍 贪吃蛇：离线可玩<br><br>
+    <b>应急页不能做什么</b><br>
+    聊天室、好友、音视频通话、64 位虚拟机、应用商店下载——这些都需要服务器，请等主站恢复。<br><br>
+    <b>数据说明</b>：本页所有数据只存在你自己的浏览器里（localStorage），不上传、不同步。
+  </div></div></div>
+
+<script>
+/* ---------- 登录 ---------- */
+/* 与完整版 .access_keys 一致：575006=通用口令(不锁IP,优先) / 189098=主密钥(锁IP) */
+var PWS = ["575006","189098"];
+function tryLogin(){
+  var v = document.getElementById("pw").value.trim();
+  if(PWS.indexOf(v) >= 0){
+    try{ sessionStorage.setItem("eg.ok","1"); }catch(e){}
+    document.getElementById("gate").style.display="none";
+    document.getElementById("desk").style.display="block";
+  }else{
+    document.getElementById("gateErr").textContent = "口令不对";
+  }
+}
+document.getElementById("pw").addEventListener("keydown", function(e){ if(e.key==="Enter") tryLogin(); });
+try{ if(sessionStorage.getItem("eg.ok")==="1"){ document.getElementById("gate").style.display="none"; document.getElementById("desk").style.display="block"; } }catch(e){}
+
+/* ---------- 窗口 ---------- */
+function openApp(n){ document.getElementById("w-"+n).classList.add("on");
+  if(n==="note") loadNote(); if(n==="board") renderMsgs(); if(n==="g2048") new2048(); if(n==="snake") newSnk(); }
+function closeApp(n){ document.getElementById("w-"+n).classList.remove("on"); if(n==="snake") stopSnk(); }
+function ls(k,v){ try{ if(v===undefined) return localStorage.getItem(k); localStorage.setItem(k,v); }catch(e){ return null; } }
+
+/* ---------- 记事本 ---------- */
+function loadNote(){ document.getElementById("noteTa").value = ls("eg.note")||""; document.getElementById("noteSt").textContent=""; }
+function saveNote(){ ls("eg.note", document.getElementById("noteTa").value);
+  var s=document.getElementById("noteSt"); s.textContent="已保存 ✔"; setTimeout(function(){s.textContent="";},2000); }
+
+/* ---------- 留言板 ---------- */
+function getMsgs(){ try{ return JSON.parse(ls("eg.msgs")||"[]"); }catch(e){ return []; } }
+function addMsg(){
+  var t = document.getElementById("boardTa").value.trim(); if(!t) return;
+  var m = getMsgs(); m.unshift({ts:new Date().toLocaleString("zh-CN"), text:t}); ls("eg.msgs", JSON.stringify(m.slice(0,50)));
+  document.getElementById("boardTa").value=""; renderMsgs();
+}
+function renderMsgs(){
+  var m = getMsgs(), h = m.map(function(x){ return '<div class="msg"><span class="mut">'+x.ts+'</span><br>'+x.text.replace(/</g,"&lt;")+'</div>'; }).join("") || '<div class="mut">还没有留言</div>';
+  h += '<button class="btn" onclick="copyMsgs()">一键复制全部（恢复后粘贴到完整版提交）</button>';
+  document.getElementById("msgList").innerHTML = h;
+}
+function copyMsgs(){
+  var t = getMsgs().map(function(x){ return "["+x.ts+"] "+x.text; }).join("\n");
+  if(navigator.clipboard) navigator.clipboard.writeText(t); else{ var ta=document.createElement("textarea"); ta.value=t; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); }
+  alert("已复制，回到完整版的「问题反馈」粘贴提交即可");
+}
+
+/* ---------- 2048 ---------- */
+var G=[], S2048=0;
+function new2048(){ G=[]; for(var i=0;i<16;i++) G.push(0); S2048=0; add2(); add2(); draw2048(); }
+function add2(){ var e=[]; for(var i=0;i<16;i++) if(!G[i]) e.push(i); if(!e.length) return; G[e[Math.floor(Math.random()*e.length)]]=Math.random()<0.9?2:4; }
+function draw2048(){
+  var el=document.getElementById("g2048"), colors={2:"#3a4a63",4:"#41556f",8:"#2b8fd8",16:"#22b573",32:"#e0a33e",64:"#e05b5b",128:"#9b59d0",256:"#22c1dc",512:"#ff9f43",1024:"#ff6b81",2048:"#ffd479"};
+  var h=""; for(var i=0;i<16;i++){ var v=G[i];
+    h+='<div class="c" style="'+(v?'background:'+(colors[v]||'#ffd479')+';color:'+(v>=64?'#1a2230':'#e7ecf3'):'')+'">'+(v||"")+'</div>'; }
+  el.innerHTML=h; document.getElementById("s2048").textContent=S2048;
+}
+function move2048(dir){
+  var moved=false;
+  function line(idxs){
+    var vals=idxs.map(function(i){return G[i];}).filter(function(v){return v;});
+    for(var i=0;i<vals.length-1;i++){ if(vals[i]===vals[i+1]){ vals[i]*=2; S2048+=vals[i]; vals.splice(i+1,1); } }
+    while(vals.length<4) vals.push(0);
+    idxs.forEach(function(i,j){ if(G[i]!==vals[j]) moved=true; G[i]=vals[j]; });
+  }
+  for(var k=0;k<4;k++){
+    if(dir==="l") line([k*4,k*4+1,k*4+2,k*4+3]);
+    if(dir==="r") line([k*4+3,k*4+2,k*4+1,k*4]);
+    if(dir==="u") line([k,k+4,k+8,k+12]);
+    if(dir==="d") line([k+12,k+8,k+4,k]);
+  }
+  if(moved){ add2(); draw2048(); }
+}
+document.addEventListener("keydown", function(e){
+  if(!document.getElementById("w-g2048").classList.contains("on")) return;
+  var m={ArrowLeft:"l",ArrowRight:"r",ArrowUp:"u",ArrowDown:"d"}[e.key];
+  if(m){ e.preventDefault(); move2048(m); }
+});
+(function(){
+  var sx=0, sy=0, el=document.getElementById("g2048");
+  el.addEventListener("touchstart", function(e){ sx=e.touches[0].clientX; sy=e.touches[0].clientY; }, {passive:true});
+  el.addEventListener("touchend", function(e){
+    var dx=e.changedTouches[0].clientX-sx, dy=e.changedTouches[0].clientY-sy;
+    if(Math.abs(dx)<20 && Math.abs(dy)<20) return;
+    move2048(Math.abs(dx)>Math.abs(dy) ? (dx>0?"r":"l") : (dy>0?"d":"u"));
+  }, {passive:true});
+})();
+
+/* ---------- 贪吃蛇 ---------- */
+var snkT=null, snk=null, snkDir=[1,0], snkScore=0;
+function newSnk(){
+  stopSnk(); snkScore=0; snkDir=[1,0];
+  snk=[[5,8],[4,8],[3,8]]; foodSnk=[15,8];
+  var c=document.getElementById("snk"), x=c.getContext("2d");
+  snkT=setInterval(function(){ stepSnk(x); },140);
+  drawSnk(x);
+}
+var foodSnk=[15,8];
+function stopSnk(){ if(snkT){ clearInterval(snkT); snkT=null; } }
+function stepSnk(x){
+  var h=[(snk[0][0]+snkDir[0]+20)%20, (snk[0][1]+snkDir[1]+20)%20];
+  if(snk.some(function(s){return s[0]===h[0]&&s[1]===h[1];})){ stopSnk(); alert("游戏结束，得分 "+snkScore); return; }
+  snk.unshift(h);
+  if(h[0]===foodSnk[0]&&h[1]===foodSnk[1]){ snkScore+=10; document.getElementById("sSnk").textContent=snkScore;
+    do{ foodSnk=[Math.floor(Math.random()*20),Math.floor(Math.random()*20)]; }while(snk.some(function(s){return s[0]===foodSnk[0]&&s[1]===foodSnk[1];}));
+  } else snk.pop();
+  drawSnk(x);
+}
+function drawSnk(x){
+  x.fillStyle="#0b101a"; x.fillRect(0,0,320,320);
+  x.fillStyle="#e05b5b"; x.fillRect(foodSnk[0]*16+3,foodSnk[1]*16+3,10,10);
+  x.fillStyle="#22c1dc"; snk.forEach(function(s){ x.fillRect(s[0]*16+2,s[1]*16+2,12,12); });
+}
+document.addEventListener("keydown", function(e){
+  if(!document.getElementById("w-snake").classList.contains("on")) return;
+  var m={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}[e.key];
+  if(m){ e.preventDefault(); if(m[0]!==-snkDir[0]||m[1]!==-snkDir[1]) snkDir=m; }
+});
+(function(){
+  var c=document.getElementById("snk"), sx=0, sy=0;
+  c.addEventListener("touchstart", function(e){ sx=e.touches[0].clientX; sy=e.touches[0].clientY; }, {passive:true});
+  c.addEventListener("touchend", function(e){
+    var dx=e.changedTouches[0].clientX-sx, dy=e.changedTouches[0].clientY-sy;
+    if(Math.abs(dx)<20 && Math.abs(dy)<20) return;
+    var m = Math.abs(dx)>Math.abs(dy) ? [dx>0?1:-1,0] : [0,dy>0?1:-1];
+    if(m[0]!==-snkDir[0]||m[1]!==-snkDir[1]) snkDir=m;
+  }, {passive:true});
+})();
+</script>
+</body>
+</html>

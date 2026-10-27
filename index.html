@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>cloudsystem</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='28' fill='%233aa0ff'/%3E%3Cpath d='M23.5 21v21M23.5 23.5l12.5 17M23.5 31l11.5 13' stroke='white' stroke-width='3.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<link rel="stylesheet" href="styles.css?v=20261019d">
+</head>
+<body>
+
+<!-- ===================== 锁屏 / GDM 登录 ===================== -->
+<div id="gdm" class="gdm">
+  <div class="gdm-bg"></div>
+  <div class="gdm-clock" id="gdmClock">00:00</div>
+  <div class="gdm-date" id="gdmDate">—</div>
+
+  <div class="gdm-user" id="gdmUser">
+    <div class="gdm-avatar">U</div>
+    <div class="gdm-username">User</div>
+    <div class="gdm-hint">点击以登录</div>
+  </div>
+
+  <div class="gdm-login hidden" id="gdmLogin">
+    <div class="gdm-avatar gdm-avatar-lg">U</div>
+    <div class="gdm-username">User</div>
+    <input type="password" id="gdmPass" class="gdm-pass" placeholder="密码" autocomplete="off">
+    <button class="gdm-enter" id="gdmEnter">登录</button>
+    <div class="prog" id="gdmProg" style="display:none">
+      <div class="prog-track"><div class="prog-bar busy" id="gdmProgBar"></div></div>
+      <div class="prog-txt" id="gdmProgTxt">正在进入桌面…</div>
+    </div>
+    <div class="gdm-msg" id="gdmMsg"></div>
+  </div>
+
+  <div class="gdm-bottom">
+    <div class="gdm-bottom-left">
+      <span title="无障碍" data-icon="无障碍"></span>
+      <span title="屏幕键盘" data-icon="键盘"></span>
+    </div>
+    <div class="gdm-bottom-right">
+      <span title="网络" data-icon="网络"></span>
+      <span title="电源" data-icon="电源"></span>
+      <span id="gdmLang">中文(拼音)</span>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== 桌面 ===================== -->
+<div id="desktop" class="desktop hidden">
+
+  <div class="wallpaper"></div>
+
+  <!-- 进入系统后在右下角标注仿制声明 -->
+  <div class="imitation-badge">仅为<b>借鉴模仿</b></div>
+
+  <!-- 桌面图标 -->
+  <div class="desktop-icons" id="desktopIcons"></div>
+
+  <!-- 顶栏 -->
+  <div class="topbar" id="topbar">
+    <div class="topbar-left">
+      <button class="activities" id="activitiesBtn">活动</button>
+      <span class="app-title" id="appTitle"></span>
+    </div>
+    <div class="topbar-center">
+      <button class="topbar-clock" id="topbarClock">
+        <span class="tb-date" id="tbDate">—</span>
+        <span class="tb-time" id="tbTime">00:00</span>
+      </button>
+    </div>
+    <div class="topbar-right" id="topbarRight">
+      <span class="tb-ind" title="屏幕共享/隐私" data-icon="屏幕共享"></span>
+      <span class="tb-ind" title="网络" data-icon="网络"></span>
+      <span class="tb-ind" title="蓝牙" data-icon="蓝牙"></span>
+      <span class="tb-ind" title="声音" data-icon="声音"></span>
+      <span class="tb-ind" title="电池" data-icon="电池"></span>
+      <button class="tb-power" id="tbPower" title="电源 / 用户" data-icon="电源"></button>
+    </div>
+  </div>
+
+  <!-- 左侧 Dash -->
+  <div class="dash" id="dash"></div>
+
+  <!-- 概览 Overview -->
+  <div class="overview hidden" id="overview">
+    <div class="overview-search">
+      <span class="ov-search-icon" data-icon="搜索"></span>
+      <input type="text" id="ovSearch" placeholder="输入以搜索应用、文件和命令">
+    </div>
+    <div class="overview-grid" id="overviewGrid"></div>
+    <div class="overview-dash" id="overviewDash"></div>
+  </div>
+
+  <!-- 窗口容器 -->
+  <div class="windows" id="windows"></div>
+
+  <!-- 日历 / 通知弹窗 -->
+  <div class="calendar-popup hidden" id="calendarPopup">
+    <div class="cp-date" id="cpDate">—</div>
+    <div class="cp-cal" id="cpCal"></div>
+    <div class="cp-notif">
+      <div class="cp-notif-title">通知</div>
+      <div class="cp-notif-item">🔄 系统更新可用 — Ubuntu 24.04.3</div>
+      <div class="cp-notif-item">🛡️ 防火墙已启用</div>
+    </div>
+  </div>
+
+  <!-- 快速设置弹窗 -->
+  <div class="qs-popup hidden" id="qsPopup">
+    <div class="qs-tiles">
+      <button class="qs-tile" data-qs="wifi"><div class="qs-ic" data-icon="网络"></div><div>Wi‑Fi</div><div class="qs-sub on">已连接</div></button>
+      <button class="qs-tile" data-qs="bt"><div class="qs-ic" data-icon="蓝牙"></div><div>蓝牙</div><div class="qs-sub">关闭</div></button>
+      <button class="qs-tile" data-qs="air"><div class="qs-ic" data-icon="飞行"></div><div>飞行模式</div><div class="qs-sub">关闭</div></button>
+      <button class="qs-tile" data-qs="dark"><div class="qs-ic" data-icon="深色"></div><div>深色模式</div><div class="qs-sub" id="qsDarkSub">关闭</div></button>
+      <button class="qs-tile" data-qs="focus"><div class="qs-ic" data-icon="专注"></div><div>专注</div><div class="qs-sub">关闭</div></button>
+      <button class="qs-tile" data-qs="rotate"><div class="qs-ic" data-icon="方向"></div><div>屏幕方向</div><div class="qs-sub">自动</div></button>
+    </div>
+    <div class="qs-sliders">
+      <div class="qs-row"><span>🔊</span><input type="range" id="qsVol" min="0" max="100" value="65"><span id="qsVolVal">65</span></div>
+      <div class="qs-row"><span>🔆</span><input type="range" id="qsBri" min="10" max="100" value="80"><span id="qsBriVal">80</span></div>
+    </div>
+    <div class="qs-links">
+      <button id="qsSettings"><span class="ic-inline" data-icon="设置"></span>设置</button>
+      <button id="qsLock"><span class="ic-inline" data-icon="锁"></span>锁定</button>
+    </div>
+  </div>
+
+  <!-- 电源 / 用户菜单 -->
+  <div class="power-menu hidden" id="powerMenu">
+    <div class="pm-user">
+      <div class="pm-avatar">U</div>
+      <div><div class="pm-name">User</div><div class="pm-status">在线</div></div>
+    </div>
+    <div class="pm-sep"></div>
+    <button class="pm-item" data-act="settings"><span class="ic-inline" data-icon="设置"></span>设置</button>
+    <button class="pm-item" data-act="lock"><span class="ic-inline" data-icon="锁"></span>锁定屏幕</button>
+    <button class="pm-item" data-act="sleep"><span class="ic-inline" data-icon="挂起"></span>挂起</button>
+    <div class="pm-sep"></div>
+    <button class="pm-item" data-act="logout"><span class="ic-inline" data-icon="退出"></span>退出登录</button>
+    <button class="pm-item" data-act="restart"><span class="ic-inline" data-icon="重启"></span>重启</button>
+    <button class="pm-item" data-act="shutdown"><span class="ic-inline" data-icon="关机"></span>关机</button>
+  </div>
+
+  <!-- 桌面右键菜单 -->
+  <div class="ctx-menu hidden" id="ctxMenu">
+    <div class="ctx-item" data-act="openTerminal"><span class="ic-inline" data-icon="终端"></span>在终端中打开</div>
+    <div class="ctx-item" data-act="newFolder"><span class="ic-inline" data-icon="新建文件夹"></span>新建文件夹</div>
+    <div class="ctx-item" data-act="paste"><span class="ic-inline" data-icon="粘贴"></span>粘贴</div>
+    <div class="ctx-sep"></div>
+    <div class="ctx-item" data-act="changeBg"><span class="ic-inline" data-icon="背景"></span>更改背景</div>
+    <div class="ctx-item" data-act="display"><span class="ic-inline" data-icon="显示"></span>显示设置</div>
+    <div class="ctx-item" data-act="settings"><span class="ic-inline" data-icon="设置"></span>设置</div>
+    <div class="ctx-sep"></div>
+    <div class="ctx-item" data-act="overview"><span class="ic-inline" data-icon="概览"></span>活动概览</div>
+  </div>
+
+</div>
+
+<script>
+// 安全层前端适配：后端 /api/* 需要 Authorization: Bearer <token>。
+// token 存在 sessionStorage（关掉标签页就没了，不会长期留在设备上），
+// 每次 fetch 由下面的包装自动加请求头。
+// 口令本身从不再出现在 URL / 请求体 / 日志里。
+(function(){
+  var TOKEN="";
+  try{
+    // 兼容：先用 ?key= 换 Cookie（服务端 302 会带回 token 场景）
+    var m=/[?&]key=([^&]*)/.exec(location.search);
+    if(m) history.replaceState(null,"",location.pathname);
+    TOKEN=sessionStorage.getItem("lsim_token")||"";
+  }catch(e){}
+  window.__LSIM_TOKEN=TOKEN;
+
+  var _fetch=window.fetch;
+  window.fetch=function(input,init){
+    try{
+      var url=typeof input==="string"?input:(input&&input.url)||"";
+      var isApi=url.indexOf("/api/")>=0;
+      if(isApi && TOKEN){
+        init=init||{};
+        var h=new Headers(init.headers||{});
+        h.set("Authorization","Bearer "+TOKEN);
+        init.headers=h;
+      }
+      if(typeof input==="string" && isApi) return _fetch(url,init);
+      if(isApi) input=new Request(input,init);
+    }catch(e){}
+    return _fetch(input,init);
+  };
+
+  // 没有 token 就把用户送去口令页（服务端也会拦，这里是为了不白跑一趟）
+  if(!TOKEN && location.pathname!=="/login"){
+    // 登录页自身不参与跳转
+  }
+})();
+</script>
+<!-- 带版本号：改了 js 之后手机浏览器不会继续用旧缓存。
+     之前反复出现"修了跟没修一样"，就是浏览器在拿缓存的旧脚本。 -->
+<script src="icons.js?v=20261019d"></script>
+<script src="changelog.js?v=20261019d"></script>
+<script src="apps.js?v=20261019d"></script>
+<script src="apps_v86.js?v=20261019d"></script>
+<script src="apps_extra.js?v=20261019d"></script>
+<script src="apps_room.js?v=20261019d"></script>
+<script src="apps_games.js?v=20261019d"></script>
+<script src="script.js?v=20261019d"></script>
+<script>
+  // 把带 data-icon 的元素填充为原创 SVG 图标（icons.js 已加载）
+  document.querySelectorAll('[data-icon]').forEach(function(el){
+    try{ el.innerHTML = window.ICON(el.getAttribute('data-icon')); }catch(e){}
+  });
+</script>
+</body>
+</html>

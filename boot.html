@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#000000">
+<title>v86 引导 · Select Boot Device</title>
+<style>
+/* ============ 字体（扒自 win32.run 的 XP 字体，BIOS/菜单质感关键）============ */
+@font-face{font-family:"MSSans";src:url("boot/assets/ms_sans_serif.ttf")format("truetype");font-weight:400}
+@font-face{font-family:"MSSans";src:url("boot/assets/ms_sans_serif_bold.ttf")format("truetype");font-weight:700}
+
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:#000;overflow:hidden;font-family:"MSSans",Arial,sans-serif}
+
+/* ============ 4:3 横屏舞台：永远居中，横屏铺满，竖屏提示 ============ */
+#stageWrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#000}
+#stage{position:relative;aspect-ratio:4/3;width:min(100vw,133.333vh);height:min(75vw,100vh);
+  background:#000;overflow:hidden;font-family:"Courier New",ui-monospace,monospace;color:#c8c8c8}
+#stage.landscape{box-shadow:0 0 0 1px #222}
+
+/* ============ BIOS 文本页 ============ */
+#biosPage{position:absolute;inset:0;padding:2.2% 2.6%;font-size:clamp(10px,1.55vw,16px);
+  line-height:1.42;white-space:pre-wrap;word-break:break-all;display:none}
+#biosPage.on{display:block}
+#biosPage .dim{color:#8a8a8a}
+#biosPage .hot{color:#fff}
+#memCount{color:#fff}
+
+/* ============ 引导菜单（复刻 win32.run：深灰底 + 白框 + 反色高亮条）============ */
+#menuPage{position:absolute;inset:0;display:none;flex-direction:column;justify-content:center;
+  padding:0 8%;background:#000;font-family:"MSSans",Arial,sans-serif}
+#menuPage.on{display:flex}
+#menuBox{background:#3a3a3a;border:2px solid #fff;padding:1.4em 1.6em;max-width:34em;
+  box-shadow:0 0 60px rgba(0,0,0,.9)}
+#menuTitle{color:#fff;font-size:clamp(13px,1.7vw,20px);font-weight:700;margin-bottom:.9em}
+.menu-item{color:#e8e8e8;font-size:clamp(12px,1.5vw,18px);padding:.32em .6em;cursor:pointer;
+  display:flex;justify-content:space-between;gap:1em;user-select:none;border:2px solid transparent}
+.menu-item .tag{color:#9fd0ff;font-size:.82em;white-space:nowrap}
+.menu-item.sel{background:#fff;color:#000;border-color:#fff}
+.menu-item.sel .tag{color:#0050b0}
+#menuFoot{margin-top:1.1em;padding-top:.8em;border-top:1px solid #777;color:#bbb;
+  font-size:clamp(10px,1.25vw,14px);display:flex;justify-content:space-between;gap:1em;flex-wrap:wrap}
+
+/* ============ 选中后的"正在启动"画面（XP logo 皮）============ */
+#loadPage{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;
+  justify-content:center;gap:5%;background:#000}
+#loadPage.on{display:flex}
+#loadPage img{width:min(46%,320px);image-rendering:auto}
+#loadMs{width:min(20%,140px);image-rendering:auto}
+#loadText{color:#cfcfcf;font-family:"MSSans",Arial,sans-serif;font-size:clamp(11px,1.4vw,16px)}
+#loadBar{width:min(52%,360px);height:.62em;background:#1c1c1c;border-radius:.31em;overflow:hidden}
+#loadBar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#3a76c4,#79b4ef);
+  border-radius:.31em;transition:width .25s linear}
+@keyframes msBlink{0%,55%{content:""}56%,100%{content:"  "}}
+#loadDots{color:#8fb8ea}
+
+/* ============ 竖屏遮罩（任务#10：竖屏提示）============ */
+#rotate{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;
+  gap:1.4em;background:#0b0b0f;z-index:50;font-family:"MSSans",Arial,sans-serif;text-align:center;padding:2em}
+#rotate .ph{width:64px;height:104px;border:3px solid #7fb2ef;border-radius:12px;position:relative;
+  animation:phRot 2.2s ease-in-out infinite}
+#rotate .ph::after{content:"";position:absolute;left:50%;bottom:7px;transform:translateX(-50%);
+  width:22px;height:3px;background:#7fb2ef;border-radius:2px}
+@keyframes phRot{0%,35%{transform:rotate(0)}65%,100%{transform:rotate(-90deg)}}
+#rotate h2{color:#e8eef7;font-size:19px;font-weight:700}
+#rotate p{color:#97a3b4;font-size:14px;line-height:1.7;max-width:22em}
+@media (orientation:portrait){#rotate{display:flex}#stageWrap{display:none}}
+</style>
+</head>
+<body>
+
+<!-- 竖屏才出现：引导界面是 4:3 老 BIOS 舞台，横屏体验 -->
+<div id="rotate">
+  <div class="ph"></div>
+  <h2>请将手机横屏使用</h2>
+  <p>v86 引导界面是 4:3 的经典 BIOS 舞台，横屏后才能看到完整的开机自检与引导菜单。</p>
+</div>
+
+<div id="stageWrap">
+  <div id="stage">
+
+    <!-- ① BIOS 自检文本 -->
+    <div id="biosPage"></div>
+
+    <!-- ② 引导设备菜单 -->
+    <div id="menuPage">
+      <div id="menuBox">
+        <div id="menuTitle">Please select boot device :</div>
+        <div id="menuList"></div>
+        <div id="menuFoot">
+          <span>↑ ↓ to move</span><span>Enter to select</span><span>Tap option on touch</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ③ 正在启动（XP 皮） -->
+    <div id="loadPage">
+      <img id="loadLogo" src="boot/assets/xp_logo_horizontal.png" alt="logo">
+      <img id="loadMs" src="boot/assets/xp_loading_mslogo.jpg" alt="">
+      <div id="loadBar"><i id="loadBarI"></i></div>
+      <div id="loadText">Starting up<span id="loadDots"></span></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+/* ============ 系统清单（与 apps_v86.js 的 V86_SYSTEMS 保持一致）============ */
+var SYSTEMS=[
+  {key:"tinycore", name:"TinyCore Linux 11.0", tag:"13.7 MB · ★推荐",
+   how:"bzImage 直导内核，initrd 自包含根文件系统，启动最稳"},
+  {key:"slitaz",   name:"SliTaz 5.0-RC4",      tag:"53 MB · ⚠ 慢网慎选",
+   how:"图形桌面 + 包管理器，首次下载较慢"},
+  {key:"kolibri",  name:"KolibriOS",           tag:"1.4 MB · 加载最快",
+   how:"整镜像引导，俄罗斯 1.4MB 微型图形系统"},
+  {key:"freedos",  name:"FreeDOS 1.3",         tag:"720 KB · 秒开",
+   how:"开源 DOS，软盘镜像直接引导，命令行练手"},
+  {key:"msdos",    name:"MS-DOS 7.10 中文版", tag:"1.4 MB · 中文",
+   how:"带中文支持的 DOS 7.1，启动菜单倒计时自动进入"},
+  {key:"win101",   name:"Windows 1.01 (1985)", tag:"1.4 MB · 40 年前真品",
+   how:"微软第一版 Windows，MS-DOS Executive 里双击 WIN.COM 进入图形界面"},
+  {key:"solaros",  name:"Solar_OS 0.104",    tag:"1.4 MB · 手搓图形系统",
+   how:"启动菜单按回车，进入蓝色图形桌面"},
+  {key:"openbsd",  name:"OpenBSD 引导盘",     tag:"1.4 MB · BSD",
+   how:"正统 BSD 引导器，启动到 boot> 提示符"},
+];
+var DESKTOP={key:"__desktop", name:"Return to Desktop", tag:"不启动虚拟机", how:"回到模拟器桌面"};
+
+/* ============ ① BIOS 自检序列 ============ */
+var biosPage=document.getElementById("biosPage");
+var biosLines=[
+  function(){ return line("v86 Virtual BIOS v6.00PG  (libv86-wasm · WebAssembly)","hot"); },
+  function(){ return line("Copyright (C) 2024-2026, v86 Emulation Project","dim"); },
+  function(){ return line(""); },
+  function(){ return line("Main Processor : Intel(R) Pentium(R) 4 CPU 2.40GHz  [emulated]"); },
+  function(){ return line("Memory Testing : <span id='memCount'>0</span>K"); },
+  function(){ return line("Memory Testing : <span id='memCount2'>0</span>K OK"); },
+  function(){ return line(""); },
+  function(){ return line("Detecting IDE Primary Master  ... v86 Virtual Disk"); },
+  function(){ return line("Detecting IDE Primary Slave   ... None"); },
+  function(){ return line("Detecting IDE Secondary Master... None"); },
+  function(){ return line("Detecting IDE Secondary Slave ... None"); },
+  function(){ return line(""); },
+  function(){ return line("Verifying DMI Pool Data ........"); },
+  function(){ return line("Boot from Emulated Disk ...","hot"); },
+];
+function line(t,cls){ var d=document.createElement("div"); if(cls)d.className=cls; d.innerHTML=t; return d; }
+
+var MEM_TOTAL=524288; // 512MB，与 apps_v86.js 默认内存档一致
+
+function runBios(done){
+  biosPage.classList.add("on");
+  var i=0, memTimer=null;
+  function next(){
+    if(i>=biosLines.length){ setTimeout(done,420); return; }
+    var el=biosLines[i++]();
+    biosPage.appendChild(el);
+    biosPage.scrollTop=biosPage.scrollHeight;
+    // 内存测试行：数字滚动到 MEM_TOTAL
+    var mc=el.querySelector("#memCount");
+    if(mc){
+      var cur=0;
+      memTimer=setInterval(function(){
+        cur+=Math.floor(1800+Math.random()*2600);
+        if(cur>=MEM_TOTAL){ cur=MEM_TOTAL; clearInterval(memTimer); memTimer=null;
+          setTimeout(next,180); }
+        mc.textContent=cur.toLocaleString("en-US");
+      },36);
+      return; // 等滚动完了再走下一行
+    }
+    setTimeout(next,130+Math.random()*120);
+  }
+  next();
+}
+
+/* ============ 跳转工具：iframe 内嵌时必须穿透到顶层，否则只跳自己 ============ */
+function go(url){
+  try{
+    if(window.top && window.top!==window){ window.top.location.href=url; return; }
+  }catch(e){}
+  location.href=url;
+}
+
+/* ============ ② 引导菜单 ============ */
+var menuPage=document.getElementById("menuPage");
+var menuList=document.getElementById("menuList");
+var items=SYSTEMS.concat([DESKTOP]);
+var selIdx=0;
+
+function buildMenu(){
+  items.forEach(function(s,idx){
+    var d=document.createElement("div");
+    d.className="menu-item"+(idx===0?" sel":"");
+    d.innerHTML="<span>"+s.name+"</span><span class='tag'>"+s.tag+"</span>";
+    d.addEventListener("click",function(){ selIdx=idx; paint(); choose(); });
+    menuList.appendChild(d);
+  });
+}
+/* ---- 动态追加用户导入的镜像（GET /api/images，与"虚拟机"窗口导入功能共用）---- */
+var PRESET_IMGS=["kolibri.img","freedos722.img","msdos.img","windows101.img","os8.dsk","openbsd.img",
+                 "TinyCore-11.0.iso","slitaz-rolling-2024.iso","dsl-4.11.rc2.iso"];
+function fmtImgSize(b){
+  return b>=1048576 ? (b/1048576).toFixed(0)+" MB" : Math.max(1,Math.round(b/1024))+" KB";
+}
+function loadCustomImages(){
+  fetch("/api/images",{credentials:"same-origin"})
+    .then(function(r){ return r.ok?r.json():{items:[]}; })
+    .then(function(j){
+      var added=false;
+      (j.items||[]).forEach(function(im){
+        if(PRESET_IMGS.indexOf(im.name)>=0) return;
+        // key 规则与 apps_v86.js 上传注册时保持一致，深链才能对上
+        var key="custom_"+im.name.replace(/[^a-zA-Z0-9_.-]/g,"_");
+        for(var i=0;i<items.length;i++){ if(items[i].key===key) return; }
+        items.splice(items.length-1,0,{
+          key:key, name:im.name.replace(/\.[^.]+$/,""),
+          tag:fmtImgSize(im.size)+" · 导入", how:"用户导入的镜像"
+        });
+        added=true;
+      });
+      if(added){ menuList.innerHTML=""; buildMenu(); paint(); }
+    })
+    .catch(function(){ /* 没登录或接口异常时只用预置清单，不阻塞引导 */ });
+}
+function paint(){
+  Array.prototype.forEach.call(menuList.children,function(el,idx){
+    el.classList.toggle("sel",idx===selIdx);
+  });
+}
+function choose(){
+  var s=items[selIdx];
+  if(s.key==="__desktop"){ go("/"); return; }
+  showLoad(s);
+}
+
+document.addEventListener("keydown",function(e){
+  if(!menuPage.classList.contains("on"))return;
+  if(e.key==="ArrowDown"||e.key==="ArrowUp"){
+    e.preventDefault();
+    selIdx=(selIdx+(e.key==="ArrowDown"?1:-1)+items.length)%items.length;
+    paint();
+  }else if(e.key==="Enter"||e.key===" "){
+    e.preventDefault(); choose();
+  }else if(e.key==="Escape"){
+    go("/");
+  }
+});
+
+/* ============ ③ 正在启动 ============ */
+var loadPage=document.getElementById("loadPage");
+var loadBarI=document.getElementById("loadBarI");
+var loadDots=document.getElementById("loadDots");
+
+function showLoad(s){
+  menuPage.classList.remove("on");
+  loadPage.classList.add("on");
+  document.getElementById("loadText").firstChild.nodeValue="Starting "+s.name;
+  var p=0, dots=0;
+  var barTimer=setInterval(function(){
+    p=Math.min(96,p+Math.random()*9); loadBarI.style.width=p+"%";
+  },170);
+  var dotTimer=setInterval(function(){
+    dots=(dots+1)%4; loadDots.textContent=".".repeat(dots);
+  },320);
+  setTimeout(function(){
+    clearInterval(barTimer); clearInterval(dotTimer);
+    loadBarI.style.width="100%";
+    // 带上系统选择跳桌面：script.js 深链会自动开"虚拟机"窗口并按 sys 启动
+    go("/?app="+encodeURIComponent("虚拟机")+"&sys="+encodeURIComponent(s.key));
+  },2100);
+}
+
+/* ============ 启动 ============ */
+buildMenu();
+loadCustomImages();
+runBios(function(){
+  biosPage.classList.remove("on");
+  menuPage.classList.add("on");
+});
+})();
+</script>
+</body>
+</html>

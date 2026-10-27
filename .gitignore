@@ -1,0 +1,57 @@
+# ===== 密钥与凭据（绝不能提交）=====
+.access_key
+.access_keys
+.access_keys.bak
+.access_keys.bak2
+.ip_allow
+.github/token
+.github/
+.cloudflare/
+
+# ===== 运行时数据库 / 会话 / 注册表 =====
+.sessions.db
+.sessions.db-wal
+.sessions.db-shm
+reg.db
+reg.db-wal
+reg.db-shm
+
+# ===== 大体积二进制 / 镜像（不入库）=====
+win/
+store/
+userfiles/
+*.iso
+*.img
+*.qcow2
+*.vdi
+*.vmdk
+*.vhdx
+
+# ===== 日志与运行期产物 =====
+*.log
+.audit.log
+.guardian.log
+.heartbeat
+.idle_test
+.keepalive_status
+.entries.json
+.url_notice.json
+.public_url
+.public_url.bak
+.tunnel/
+__pycache__/
+*.pyc
+
+# ===== 临时文件 =====
+*.tmp
+*~
+.DS_Store
+
+# ===== 运行期用户数据（非源码）=====
+feedback/
+scan_reports/
+上线IP日志.txt
+维护记录*.txt
+维护记录*.log
+安全审计*.txt
+安全审计*.log
