@@ -52,9 +52,10 @@ fi
 # ——这是故意的：重连会换域名，偷偷换掉你手机里的链接。
 # 但"全挂了没人拉"和"还在服务只是连接断了"是两回事：
 # 前者必须自动恢复，后者要等你决定。所以只补进程，不动已活着的隧道。
-# 注意竞态：守护拉命名隧道是异步的，这里先等它起来（最多 15s），
-# 只认命名隧道（--protocol http2），避免它刚起来就被兜底 quick 重复拉一份。
-for _ in $(seq 1 15); do
+# 注意竞态：守护拉命名隧道是异步的（实测约 19s 才就绪），这里先等它起来
+# （最多 40s），只认命名隧道（--protocol http2），避免它刚起来就被兜底 quick 重复拉一份。
+# 即便偶尔没等到，tunnel_keepalive.sh 在命名隧道健康后也会自动清掉孤儿 quick。
+for _ in $(seq 1 40); do
     if ps -eo args --no-headers | grep -q "[c]loudflared tunnel --no-autoupdate --protocol http2"; then
         break
     fi
